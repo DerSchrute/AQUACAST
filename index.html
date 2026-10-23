@@ -20,6 +20,8 @@
   <script defer src="js/station-forecast-guide.js"></script>
   <script defer src="js/chart-mode.js"></script>
   <script defer src="js/transparency.js"></script>
+  <script defer src="js/imports.js"></script>
+  <script defer src="js/accuracy-dashboard.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/notifications.js"></script>
   <script defer src="js/investigations.js"></script>
@@ -124,8 +126,32 @@
         </section>
 
         <section class="page-section" id="page-records" data-title="Consumption records">
-          <div class="page-heading"><div><p class="eyebrow">DATA EXPLORER</p><h1>Consumption records</h1><p class="page-subtitle">Search and inspect the fictional records used to demonstrate the interface.</p></div><button class="primary-button" id="resetRecordFilters">Reset filters</button></div>
+          <div class="page-heading"><div><p class="eyebrow">DATA EXPLORER</p><h1>Consumption records</h1><p class="page-subtitle">Search and inspect demonstration records, including locally imported CSV readings.</p></div><button class="primary-button" id="resetRecordFilters">Reset filters</button></div>
           <div class="filter-bar"><label class="search-control">⌕ <input id="recordSearch" type="search" placeholder="Search station or period…" aria-label="Search records"></label><label>Period<select id="recordPeriod"><option value="all">All periods</option></select></label><label>Review status<select id="recordStatus"><option value="all">All statuses</option><option value="Flagged">Flagged</option><option value="Normal">Normal</option></select></label></div>
+          <article class="panel import-panel admin-only hidden" id="dataImportPanel">
+            <div class="panel-heading"><div><h2>Import monthly consumption records</h2><p>Admin-only · CSV file prepared in Excel · Browser-local demonstration</p></div><span class="status-pill neutral">v3.9</span></div>
+            <p class="body-copy">Upload a CSV with the exact headers <code>station,period,consumption</code>. Station IDs must match the station directory; period uses YYYY-MM; consumption is a nonnegative number in m³. Excel users: open the sample workbook and save its Import_Data sheet as CSV UTF-8.</p>
+            <div id="recordImportDropzone" class="import-dropzone" role="button" tabindex="0" aria-label="Upload CSV by dragging and dropping or browsing files">
+              <div class="import-dropzone-icon" aria-hidden="true">⇧</div>
+              <strong>Drag and drop your CSV file here</strong>
+              <span>or</span>
+              <label class="primary-button import-browse-button" for="recordImportFile">Choose a file</label>
+              <input id="recordImportFile" type="file" accept=".csv,text/csv" aria-label="Choose CSV file">
+              <small>CSV only · up to 2 MB · No upload to a server</small>
+            </div>
+            <div class="import-actions"><button class="secondary-button" id="downloadRecordsCSV" type="button">Export current records CSV ↓</button><button class="secondary-button" id="resetImportedRecords" type="button">Reset imported data</button></div>
+            <p id="recordImportStatus" class="small-muted" role="status" aria-live="polite">No file selected. Current data is fictional.</p>
+            <div id="recordImportPreview" class="hidden"><h3>Validation &amp; change preview</h3><div id="recordImportSummary" class="import-summary"></div><div id="recordImportErrors" class="import-errors" role="alert"></div><div class="table-scroll"><table><thead><tr><th>Station</th><th>Period</th><th>Consumption (m³)</th><th>Change</th></tr></thead><tbody id="recordImportRows"></tbody></table></div><div class="import-actions"><button type="button" class="primary-button" id="confirmRecordImport">Review and import</button><button type="button" class="secondary-button" id="cancelRecordImport">Cancel</button></div></div>
+            <p class="small-muted">Existing station-month readings are updated only after confirmation. The import does not automatically flag anomalies, train ARIMA, or synchronize data across devices. Never use real confidential records on this public prototype.</p>
+          </article>
+          <article class="panel admin-only hidden" id="recordHistoryPanel">
+            <div class="panel-heading"><div><h2>Consumption Records activity &amp; dataset history</h2><p>Review previous snapshots, search activity, and restore a prior version of the local demonstration dataset.</p></div><span class="status-pill neutral">Local history</span></div>
+            <label class="search-control history-search">⌕ <input id="recordHistorySearch" type="search" placeholder="Search by action, file, date, or version…" aria-label="Search record activity and dataset versions"></label>
+            <p class="small-muted">Snapshots capture the complete Consumption Records dataset before imports, resets, or restorations. Review a version before restoring it. Flags and correspondence are not rolled back.</p>
+            <div id="recordHistoryList" class="history-list" aria-live="polite"></div>
+            <div id="recordHistoryOverview" class="hidden history-overview"><h3 id="recordHistoryTitle">Previous dataset</h3><div id="recordHistoryStats" class="small-muted"></div><label class="search-control history-search">⌕ <input id="recordHistoryRowsSearch" type="search" placeholder="Search station or period in this version…" aria-label="Search historical dataset"></label><div class="table-scroll history-table"><table><thead><tr><th>Station</th><th>Period</th><th>Consumption (m³)</th></tr></thead><tbody id="recordHistoryRows"></tbody></table></div><p id="recordHistoryRowsCount" class="small-muted"></p><div class="import-actions"><button type="button" class="secondary-button" id="recordHistoryExport">Download this version CSV</button><button type="button" class="primary-button" id="recordHistoryRestore">Restore this version</button><button type="button" class="secondary-button" id="recordHistoryClose">Close overview</button></div></div>
+            <p id="recordHistoryStatus" class="small-muted" role="status" aria-live="polite"></p>
+          </article>
           <article class="panel table-panel"><div class="table-summary"><span id="recordCount">Showing records</span><span class="table-note">Sample data · Fictional identifiers</span></div><div class="table-scroll"><table><thead><tr><th><button class="sort-button" data-sort="period">Period ↕</button></th><th>Station ID</th><th><button class="sort-button" data-sort="consumption">Consumption ↕</button></th><th>Unit</th><th>Status</th><th id="recordActionHeader" class="hidden">Action</th></tr></thead><tbody id="recordsTableBody"></tbody></table></div><div class="empty-state hidden" id="recordsEmpty">No sample records match these filters.</div></article>
           <p id="manualFlagSuccess" class="small-muted hidden" role="status" aria-live="polite"></p>
           <div id="manualFlagModal" class="investigation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="manualFlagHeading">
@@ -168,9 +194,18 @@
           <div class="prototype-banner inline-banner"><span class="banner-icon">!</span><div><strong>Not a validated operational model</strong><span>Fictional demonstration results do not establish predictive accuracy. Imported CSV stays in this browser session; do not upload confidential records to an unapproved static prototype.</span></div></div>
           <article class="panel"><div class="panel-heading"><div><h2>Import &amp; validation</h2><p>CSV headers: station,period,consumption · YYYY-MM · nonnegative m³ · one row per station-month</p></div></div>
             <p class="body-copy">Choose a local CSV or load synthetic demonstration data. Invalid dates, duplicate station-months, and negative values are rejected. Gaps in monthly sequences prevent evaluation until resolved.</p>
-            <label for="evaluationCSV">Local CSV file</label><input id="evaluationCSV" type="file" accept=".csv,text/csv" />
+            <div id="evaluationDropzone" class="import-dropzone" role="button" tabindex="0" aria-label="Import model evaluation CSV by dragging or browsing"><div class="import-dropzone-icon" aria-hidden="true">⇧</div><strong>Drag and drop your CSV file here</strong><span>or</span><label class="primary-button import-browse-button" for="evaluationCSV">Choose a file</label><input id="evaluationCSV" type="file" accept=".csv,text/csv" aria-label="Choose model evaluation CSV"><small>CSV only · Maximum 3 MB · Processed locally</small></div>
             <div class="method-chips" style="margin-top:14px"><button class="primary-button" id="loadSampleEvaluation" type="button">Load fictional sample</button><button class="text-button" id="downloadCSVTemplate" type="button">Download CSV template ↓</button><button class="text-button" id="exportEvaluation" type="button">Export backtest results ↓</button></div>
             <p id="evaluationError" role="alert" style="white-space:pre-line;color:#b33"></p><p id="evaluationStatus" class="small-muted" aria-live="polite">No dataset loaded.</p>
+          </article>
+          <article class="panel v38-evaluation-panel" id="v38AccuracyPanel">
+            <div class="panel-heading"><div><h2>Forecast accuracy dashboard</h2><p>Actual versus one-month-ahead backtested predictions · m³</p></div><span class="status-pill neutral">v3.8 · Research demo</span></div>
+            <div class="v38-controls"><label>Data source<select id="v38Source"><option value="app">Current Consumption Records (including imports)</option><option value="research">Model evaluation dataset</option></select></label><label>Station<select id="v38Station"></select></label><label>Model<select id="v38Model"><option value="naive">Naïve baseline</option><option value="movingAverage">3-month moving average</option><option value="ses">Exponential smoothing</option><option value="drift">Naïve with drift</option><option value="linearTrend">Linear trend</option></select></label></div>
+            <p id="v38Status" class="small-muted" role="status" aria-live="polite"></p>
+            <div class="v38-metrics" id="v38Metrics"></div>
+            <div id="v38Plot" class="v38-plot" role="img" aria-label="Backtested actual and predicted water consumption over time"></div>
+            <div class="table-scroll"><table><thead><tr><th>Test month</th><th>Actual (m³)</th><th>Predicted (m³)</th><th>Absolute error (m³)</th></tr></thead><tbody id="v38Predictions"></tbody></table></div>
+            <p class="small-muted">Predictions use only prior months (expanding-window, one-step-ahead, first six months for training). MAE and RMSE are calculated on the displayed test months. Model choice and evaluation use the same period, so these are exploratory backtest metrics—not independent test accuracy. No ARIMA is implemented or validated here.</p>
           </article>
           <div id="evaluationResults"></div>
           <article class="panel" style="margin-top:14px"><h2>Evaluation protocol</h2><p class="body-copy">Rolling-origin, one-month-ahead evaluation starts after six consecutive training months. Naïve, 3-month moving average, exponential smoothing (α=0.30), naïve with drift, and linear trend use the same test periods. A challenger is selected only if its MAE is at least 5% lower than the naïve baseline. This threshold is a provisional heuristic, not proof of generalization. MAE and RMSE use m³; MASE uses the in-sample naïve difference scale. A zero denominator produces N/A. This sandbox ranks models on the evaluation period; an independent holdout is still needed for an unbiased final accuracy claim.</p></article>
@@ -258,6 +293,9 @@
         <footer class="main-footer"><span>AQUACAST · Static clickable prototype</span><span>Local sample data · Research assumptions pending validation</span></footer>
       </div>
     </main>
+  </div>
+  <div id="recordImportConfirmModal" class="investigation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="recordImportConfirmHeading">
+    <div class="investigation-backdrop" data-record-confirm-close></div><div class="investigation-window import-confirm-window"><div class="investigation-head"><h2 id="recordImportConfirmHeading">Confirm dataset import</h2><button type="button" data-record-confirm-close aria-label="Cancel import">×</button></div><div class="import-confirm-body"><p><strong>This action changes the records used throughout AQUACAST.</strong> Dashboards, charts, reports and evaluations may change. A recoverable snapshot of the previous dataset will be saved first.</p><p id="recordImportConfirmDetails" class="import-summary"></p><div class="flag-compose-footer"><button type="button" class="secondary-button" data-record-confirm-close>Cancel</button><button type="button" class="primary-button" id="recordImportConfirmFinal">Yes, import records</button></div></div></div>
   </div>
 </body>
 </html>
