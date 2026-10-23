@@ -1,12 +1,12 @@
 /* AQUACAST static demo app shell. Never cache user-imported CSVs or dynamic third-party responses. */
-const CACHE = 'aquacast-shell-v391';
+const CACHE = 'aquacast-shell-v393';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/styles.css', './assets/aquacast-logo.png',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png',
   './js/data.js', './js/charts.js', './js/evaluation.js',
   './js/forecast-insights.js', './js/station-forecast-guide.js',
-  './js/chart-mode.js', './js/imports.js', './js/accuracy-dashboard.js', './js/transparency.js', './js/app.js', './js/notifications.js', './js/investigations.js', './js/pwa.js'
+  './js/chart-mode.js', './js/imports.js', './js/accuracy-dashboard.js', './js/transparency.js', './js/app.js', './js/notifications.js', './js/investigations.js', './js/pwa.js', './js/notice-modal.js'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(()=>self.skipWaiting()));

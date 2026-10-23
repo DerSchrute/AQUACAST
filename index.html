@@ -26,9 +26,9 @@
   <script defer src="js/notifications.js"></script>
   <script defer src="js/investigations.js"></script>
   <script defer src="js/pwa.js"></script>
+  <script defer src="js/notice-modal.js"></script>
 </head>
 <body>
-  <button id="pwaInstall" type="button" hidden aria-label="Install AQUACAST" style="position:fixed;right:12px;bottom:82px;z-index:1000;border:1px solid #c5d8df;background:#fff;color:#123e57;border-radius:20px;padding:10px 16px;box-shadow:0 4px 18px #0002;font-weight:700">Install AQUACAST</button>
   <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
     <div class="login-brand"><img class="brand-logo" src="assets/aquacast-logo.png" alt="AQUACAST logo"><span><strong>AQUACAST</strong><small>Water intelligence</small></span></div>
     <div class="login-card">
@@ -68,7 +68,6 @@
         <button class="nav-item" data-page="reports"><span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5zM15 3v5h4M8 12h8M8 16h8"/></svg></span>Reports</button>
         <button class="nav-item" data-page="information"><span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></span>Data &amp; model info</button>
         <button class="nav-item admin-only" data-page="admin"><span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg></span>Admin settings</button>
-      <button class="nav-item admin-only hidden" data-page="notices"><span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6"/></svg></span>Notification creator</button>
       <button class="nav-item user-only hidden" data-page="contact-admin"><span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6"/></svg></span>Contact administration</button>
       </nav>
       <div class="sidebar-bottom">
@@ -88,6 +87,7 @@
             <button type="button" class="account-menu-action" id="accountDetailsButton">◉ <span>Account information</span></button>
             <button type="button" class="account-menu-action" id="accountPrivacyButton">♢ <span>Privacy &amp; security</span></button>
             <button type="button" class="account-menu-action" id="accountHelpButton">ⓘ <span>Help &amp; system information</span></button>
+            <button type="button" class="account-menu-action" id="pwaInstall">⬇ <span>Install AQUACAST</span></button>
             <div class="account-menu-divider"></div>
             <button type="button" class="account-menu-action account-menu-logout" id="accountSignOutButton">↪ <span>Sign out</span></button>
           </div>
@@ -127,7 +127,7 @@
 
         <section class="page-section" id="page-records" data-title="Consumption records">
           <div class="page-heading"><div><p class="eyebrow">DATA EXPLORER</p><h1>Consumption records</h1><p class="page-subtitle">Search and inspect demonstration records, including locally imported CSV readings.</p></div><button class="primary-button" id="resetRecordFilters">Reset filters</button></div>
-          <div class="filter-bar"><label class="search-control">⌕ <input id="recordSearch" type="search" placeholder="Search station or period…" aria-label="Search records"></label><label>Period<select id="recordPeriod"><option value="all">All periods</option></select></label><label>Review status<select id="recordStatus"><option value="all">All statuses</option><option value="Flagged">Flagged</option><option value="Normal">Normal</option></select></label></div>
+          <div class="filter-bar"><label class="search-control">⌕ <input id="recordSearch" type="search" placeholder="Search station or period…" aria-label="Search records"></label><label>Year<select id="recordYear"><option value="all">All years</option></select></label><label>Month<select id="recordMonth"><option value="all">All months</option></select></label><label>Station<select id="recordStation"><option value="all">All stations</option></select></label><label>Sort by<select id="recordSort"><option value="period-desc">Newest period first</option><option value="period-asc">Oldest period first</option><option value="station-asc">Station A–Z</option><option value="station-desc">Station Z–A</option><option value="consumption-desc">Highest consumption</option><option value="consumption-asc">Lowest consumption</option></select></label><label>Review status<select id="recordStatus"><option value="all">All statuses</option><option value="Flagged">Flagged</option><option value="Normal">Normal</option></select></label></div>
           <article class="panel import-panel admin-only hidden" id="dataImportPanel">
             <div class="panel-heading"><div><h2>Import monthly consumption records</h2><p>Admin-only · CSV file prepared in Excel · Browser-local demonstration</p></div><span class="status-pill neutral">v3.9</span></div>
             <p class="body-copy">Upload a CSV with the exact headers <code>station,period,consumption</code>. Station IDs must match the station directory; period uses YYYY-MM; consumption is a nonnegative number in m³. Excel users: open the sample workbook and save its Import_Data sheet as CSV UTF-8.</p>
@@ -152,7 +152,7 @@
             <div id="recordHistoryOverview" class="hidden history-overview"><h3 id="recordHistoryTitle">Previous dataset</h3><div id="recordHistoryStats" class="small-muted"></div><label class="search-control history-search">⌕ <input id="recordHistoryRowsSearch" type="search" placeholder="Search station or period in this version…" aria-label="Search historical dataset"></label><div class="table-scroll history-table"><table><thead><tr><th>Station</th><th>Period</th><th>Consumption (m³)</th></tr></thead><tbody id="recordHistoryRows"></tbody></table></div><p id="recordHistoryRowsCount" class="small-muted"></p><div class="import-actions"><button type="button" class="secondary-button" id="recordHistoryExport">Download this version CSV</button><button type="button" class="primary-button" id="recordHistoryRestore">Restore this version</button><button type="button" class="secondary-button" id="recordHistoryClose">Close overview</button></div></div>
             <p id="recordHistoryStatus" class="small-muted" role="status" aria-live="polite"></p>
           </article>
-          <article class="panel table-panel"><div class="table-summary"><span id="recordCount">Showing records</span><span class="table-note">Sample data · Fictional identifiers</span></div><div class="table-scroll"><table><thead><tr><th><button class="sort-button" data-sort="period">Period ↕</button></th><th>Station ID</th><th><button class="sort-button" data-sort="consumption">Consumption ↕</button></th><th>Unit</th><th>Status</th><th id="recordActionHeader" class="hidden">Action</th></tr></thead><tbody id="recordsTableBody"></tbody></table></div><div class="empty-state hidden" id="recordsEmpty">No sample records match these filters.</div></article>
+          <article class="panel table-panel"><div class="table-summary"><span id="recordCount">Showing records</span><span class="table-note">Sample data · Fictional identifiers</span></div><div class="table-scroll"><table><thead><tr><th><button class="sort-button" data-sort="period">Period ↕</button></th><th><button class="sort-button" data-sort="station">Station ID ↕</button></th><th><button class="sort-button" data-sort="consumption">Consumption ↕</button></th><th>Unit</th><th>Status</th><th id="recordActionHeader" class="hidden">Action</th></tr></thead><tbody id="recordsTableBody"></tbody></table></div><div class="empty-state hidden" id="recordsEmpty">No sample records match these filters.</div></article>
           <p id="manualFlagSuccess" class="small-muted hidden" role="status" aria-live="polite"></p>
           <div id="manualFlagModal" class="investigation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="manualFlagHeading">
             <div class="investigation-backdrop" data-manual-flag-close></div>
@@ -224,22 +224,7 @@
 <button class="primary-button" type="submit">Send to administration</button><span id="stationMessageFeedback" role="status" class="small-muted"></span></form></article>
 <article class="panel"><div class="panel-heading"><h2>Sent messages</h2></div><div id="stationSentMessages"></div></article>
 </section>
-<section class="page-section admin-only hidden" id="page-notices" data-title="Notification creator">
-          <div class="page-heading"><div><p class="eyebrow">ADMINISTRATIVE COMMUNICATION · DEMO</p><h1>Notification creator</h1><p class="page-subtitle">Compose and publish local demonstration announcements to all or selected station accounts.</p></div></div>
-          <article class="panel notice-editor-panel"><form id="noticeForm"><label>Notification title<input id="noticeTitle" maxlength="140" required placeholder="e.g., Monthly consumption review"></label>
-          <label>Recipients<select id="noticeAudience"><option value="all">All stations</option><option value="province">Stations in selected province</option><option value="stations">Specific stations</option></select></label>
-          <div id="noticeProvinceWrap" class="hidden"><label>Province<select id="noticeProvince"><option>Negros Occidental</option><option>Negros Oriental</option><option>Siquijor</option></select></label></div>
-          <div id="noticeStationWrap" class="hidden"><label>Select stations (multiple)<select id="noticeStations" multiple size="9"></select></label><p class="small-muted">Ctrl/Command-click to select multiple stations.</p></div>
-          <label>Priority<select id="noticePriority"><option value="Normal">Normal</option><option value="Important">Important</option></select></label>
-          <p class="small-muted">Message body · formatted text (demo editor)</p>
-          <div class="notice-toolbar" role="toolbar" aria-label="Formatting tools">
-          <button type="button" data-format="bold"><b>B</b></button><button type="button" data-format="italic"><i>I</i></button><button type="button" data-format="underline"><u>U</u></button><button type="button" data-format="insertUnorderedList">• List</button><button type="button" data-format="insertOrderedList">1. List</button><button type="button" data-format="formatBlock" data-value="h3">Heading</button><button type="button" data-format="formatBlock" data-value="p">Paragraph</button><button type="button" data-format="createLink">Link</button>
-          </div><div id="noticeBody" class="notice-editable" contenteditable="true" role="textbox" aria-label="Notification message" aria-multiline="true" data-placeholder="Write an announcement..."></div>
-          <p class="small-muted">Formatted announcements are sanitized before saving. This is not a full Microsoft Word replacement and does not support attachments or collaboration.</p>
-          <button type="submit" class="primary-button">Publish notification</button><span id="noticeFeedback" role="status" class="small-muted"></span></form></article>
-          <article class="panel"><div class="panel-heading"><h2>Published notifications</h2></div><div id="publishedNotices"></div></article>
-        </section>
-        <section class="page-section" id="page-anomalies" data-title="Anomaly monitoring">
+<section class="page-section" id="page-anomalies" data-title="Anomaly monitoring">
           <div class="page-heading"><div><p class="eyebrow">EXCEPTION REVIEW</p><h1>Anomaly monitoring</h1><p class="page-subtitle">Administrators investigate unusual readings by requesting information from the affected station.</p></div><span class="status-pill warning" id="anomalyOpenCount">— open items</span></div><div class="region-tabs admin-only" role="group" aria-label="Filter anomalies by region"><button class="region-tab active" data-region="all">All regions</button><button class="region-tab" data-region="Negros Occidental">Negros Occidental</button><button class="region-tab" data-region="Negros Oriental">Negros Oriental</button><button class="region-tab" data-region="Siquijor">Siquijor</button></div>
           <div class="prototype-banner inline-banner"><span class="banner-icon">i</span><div><strong>A flag is not a conclusion</strong><span>Unusual consumption can have legitimate causes. A flagged record does not prove a leak, misuse, or misconduct.</span></div></div>
           <div class="anomaly-view-tabs" role="group" aria-label="Anomaly monitoring views"><button type="button" id="anomalyActiveTab" class="anomaly-view-tab active" aria-pressed="true">Active flags <span id="anomalyActiveTabCount"></span></button><button type="button" id="anomalyReviewTab" class="anomaly-view-tab admin-only" aria-pressed="false">For review <span id="anomalyReviewTabCount"></span></button><button type="button" id="anomalyArchiveTab" class="anomaly-view-tab" aria-pressed="false">Archived flags <span id="anomalyArchiveTabCount"></span></button></div>
@@ -294,6 +279,23 @@
       </div>
     </main>
   </div>
+  <button id="noticeCreatorFab" type="button" class="notice-creator-fab hidden" aria-label="Create notification" title="Create notification"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6"/><path d="M16 3v5M13.5 5.5h5"/></svg></button>
+<section class="notice-creator-modal hidden" id="noticeCreatorModal" role="dialog" aria-modal="true" aria-labelledby="noticeCreatorHeading"><div class="notice-creator-backdrop" data-notice-close></div><div class="notice-creator-window"><div class="notice-creator-head"><h2 id="noticeCreatorHeading">Notification creator</h2><button type="button" class="notice-close" data-notice-close aria-label="Close notification creator">×</button></div><div class="notice-creator-content">
+          <p class="small-muted">Compose and publish local demonstration announcements to all or selected station accounts.</p>
+          <article class="panel notice-editor-panel"><form id="noticeForm"><label>Notification title<input id="noticeTitle" maxlength="140" required placeholder="e.g., Monthly consumption review"></label>
+          <label>Recipients<select id="noticeAudience"><option value="all">All stations</option><option value="province">Stations in selected province</option><option value="stations">Specific stations</option></select></label>
+          <div id="noticeProvinceWrap" class="hidden"><label>Province<select id="noticeProvince"><option>Negros Occidental</option><option>Negros Oriental</option><option>Siquijor</option></select></label></div>
+          <div id="noticeStationWrap" class="hidden"><label>Select stations (multiple)<select id="noticeStations" multiple size="9"></select></label><p class="small-muted">Ctrl/Command-click to select multiple stations.</p></div>
+          <label>Priority<select id="noticePriority"><option value="Normal">Normal</option><option value="Important">Important</option></select></label>
+          <p class="small-muted">Message body · formatted text (demo editor)</p>
+          <div class="notice-toolbar" role="toolbar" aria-label="Formatting tools">
+          <button type="button" data-format="bold"><b>B</b></button><button type="button" data-format="italic"><i>I</i></button><button type="button" data-format="underline"><u>U</u></button><button type="button" data-format="insertUnorderedList">• List</button><button type="button" data-format="insertOrderedList">1. List</button><button type="button" data-format="formatBlock" data-value="h3">Heading</button><button type="button" data-format="formatBlock" data-value="p">Paragraph</button><button type="button" data-format="createLink">Link</button>
+          </div><div id="noticeBody" class="notice-editable" contenteditable="true" role="textbox" aria-label="Notification message" aria-multiline="true" data-placeholder="Write an announcement..."></div>
+          <p class="small-muted">Formatted announcements are sanitized before saving. This is not a full Microsoft Word replacement and does not support attachments or collaboration.</p>
+          <button type="submit" class="primary-button">Publish notification</button><span id="noticeFeedback" role="status" class="small-muted"></span></form></article>
+          <article class="panel"><div class="panel-heading"><h2>Published notifications</h2></div><div id="publishedNotices"></div></article>
+        </div></div></section>
+        
   <div id="recordImportConfirmModal" class="investigation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="recordImportConfirmHeading">
     <div class="investigation-backdrop" data-record-confirm-close></div><div class="investigation-window import-confirm-window"><div class="investigation-head"><h2 id="recordImportConfirmHeading">Confirm dataset import</h2><button type="button" data-record-confirm-close aria-label="Cancel import">×</button></div><div class="import-confirm-body"><p><strong>This action changes the records used throughout AQUACAST.</strong> Dashboards, charts, reports and evaluations may change. A recoverable snapshot of the previous dataset will be saved first.</p><p id="recordImportConfirmDetails" class="import-summary"></p><div class="flag-compose-footer"><button type="button" class="secondary-button" data-record-confirm-close>Cancel</button><button type="button" class="primary-button" id="recordImportConfirmFinal">Yes, import records</button></div></div></div>
   </div>
