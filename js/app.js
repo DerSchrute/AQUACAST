@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const data = window.AQUACAST_DATA;
+  window.AQUACAST_IMPORTS?.restore(data);
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
   const state = {
@@ -43,7 +44,8 @@
   };
   const tariffAt = (station, period) => {
     const versions = (state.tariffVersions[station]||[]).slice().sort((a,b)=>a.effective.localeCompare(b.effective));
-    const monthDate = `2026-${String(periodIndex(period)+1).padStart(2,'0')}-01`;
+    const parsed=new Date(`${period} 01`);
+    const monthDate=Number.isNaN(parsed.getTime())?'2026-01-01':`${parsed.getFullYear()}-${String(parsed.getMonth()+1).padStart(2,'0')}-01`;
     const selected=versions.filter(v=>v.effective<=monthDate).at(-1) || data.defaultTariffs[station];
     return tariffFromSelection(selected);
   };
@@ -85,6 +87,15 @@
     $('#dashboardReviewList').innerHTML=review.length?review.map(a=>`<div class="review-item"><div class="review-symbol">!</div><div class="review-details"><strong>${esc(a.station)} · ${esc(a.period)}</strong><p>${esc(a.reason)}</p><div class="review-meta">${number(a.value)} m³ · ${esc(state.anomalyStatuses[a.id])}</div></div></div>`).join(''):'<p class="small-muted">No open sample flags for this station filter.</p>';
     if(window.AQUACAST_CHARTS) window.AQUACAST_CHARTS.renderDashboard(monthly.map(x=>x.period),monthly.map(x=>x.total));
   }
+  function refreshPeriodFilters(){
+    const sel=$('#recordPeriod'), current=sel.value;
+    sel.innerHTML='<option value="all">All periods</option>'+data.periods.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    sel.value=data.periods.includes(current)?current:'all';
+    initReportCalendar();
+  }
+  function syncFlagValues(){
+    data.anomalies.forEach(a=>{const r=data.records.find(x=>x.station===a.station&&x.period===a.period);if(r)a.value=r.consumption;});
+  }
   function initRecordFilters() {
     const opts=data.periods.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
     $('#recordPeriod').insertAdjacentHTML('beforeend',opts);
@@ -115,7 +126,7 @@
   window.AQUACAST_ANOMALY_STATUS=id=>state.anomalyStatuses[id]||'Open';
   window.AQUACAST_REFRESH_ANOMALIES=()=>{renderAnomalies();window.AQUACAST_NOTIFY?.refresh();};
   // Same-origin, same-browser tab synchronization. Not a cross-device transport.
-  const SYNC_KEYS=new Set([MANUAL_FLAGS_KEY,ANOMALY_STATUS_KEY,'aquacast-v26-investigation-requests','aquacast-v28-flag-correspondence','aquacast-v36-audit-events']);
+  const SYNC_KEYS=new Set(['aquacast-v37-imported-records',MANUAL_FLAGS_KEY,ANOMALY_STATUS_KEY,'aquacast-v26-investigation-requests','aquacast-v28-flag-correspondence','aquacast-v36-audit-events']);
   const tabId='tab-'+Math.random().toString(36).slice(2);
   let syncChannel=null;
   function applySharedAnomalyState(){
@@ -133,6 +144,7 @@
   }
   function onSharedChange(key){
     if(!SYNC_KEYS.has(key))return;
+    if(key==='aquacast-v37-imported-records'){window.AQUACAST_IMPORTS?.restore(data);refreshPeriodFilters();syncFlagValues();}
     if(key===MANUAL_FLAGS_KEY){loadManualFlags();applySharedAnomalyState();}
     if(key===ANOMALY_STATUS_KEY)applySharedAnomalyState();
     redrawSharedInvestigation();
@@ -307,6 +319,7 @@
     loadManualFlags();
     state.anomalyStatuses[manualFlagId(station,period)]='Open';
     window.AQUACAST_TRACE?.record(manualFlagId(station,period),'Administration','Manual flag created',reason.slice(0,500));
+    document.dispatchEvent(new CustomEvent('aquacast:record-activity',{detail:{action:'Manual flag',description:`${station} · ${period}: ${reason.slice(0,120)}`}}));
     publishSharedChange(MANUAL_FLAGS_KEY);
     closeManualFlagModal();
     renderAll();
@@ -319,6 +332,7 @@
     try{const stored=JSON.parse(localStorage.getItem(ANOMALY_STATUS_KEY)||'{}');if(stored&&typeof stored==='object')for(const a of data.anomalies){if(['Open','Reviewed','Dismissed'].includes(stored[a.id]))state.anomalyStatuses[a.id]=stored[a.id];}}catch(err){console.warn('Could not load archived flag statuses',err);}
     setupTabSync();
     populateStationSelector();initLogin();initAccountMenu();initRecordFilters();
+    window.AQUACAST_IMPORTS?.init({data, onCommit:()=>{syncFlagValues();refreshPeriodFilters();renderAll();renderForecast();window.AQUACAST_CHARTS?.redraw?.();publishSharedChange('aquacast-v37-imported-records');}});
     $$('.nav-item').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
     $$('[data-goto]').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.goto)));
     $('#globalStation').addEventListener('change',e=>{if(state.role==='user')return;state.station=e.target.value;renderAll();if(state.page==='forecasting'){renderForecast();document.dispatchEvent(new CustomEvent('aquacast:page',{detail:{page:'forecasting',station:activeStation(),role:state.role}}));}});
